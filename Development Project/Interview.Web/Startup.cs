@@ -5,9 +5,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
+using System.Reflection;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Interview.Domain;
+using Interview.Infrastructure.DataAccess;
+using Interview.Infrastructure.Repositories;
+using Interview.Web.Repositories;
+using Microsoft.Extensions.Logging;
 
 namespace Interview.Web
 {
@@ -23,6 +29,21 @@ namespace Interview.Web
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddSingleton<ILoggerFactory, LoggerFactory>();
+            services.AddAutoMapper(Assembly.GetExecutingAssembly());
+            services.AddScoped<IPCatRepository, PCatRepository>();
+            services.AddScoped<ISqlDataAccess, SqlDataAccess>();
+            services.AddTransient<IPCatRepository>(x => new PCatRepository(new SqlDataAccess(Configuration.GetConnectionString("Instance_DB"))));
+            services.AddSwaggerGen();
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1",
+                    new Microsoft.OpenApi.Models.OpenApiInfo
+                    {
+                        Version = "v1",
+                        Title = "Interview web API"
+                    });
+            });
             services.AddControllers();
         }
 
@@ -42,6 +63,12 @@ namespace Interview.Web
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
+
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "InterviewApi");
+            });
 
             app.UseRouting();
 
